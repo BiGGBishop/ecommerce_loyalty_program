@@ -17,7 +17,6 @@ class Purchase extends Model
         'user_id',
         'product_id',
         'amount',
-        'product_name',
         'transaction_id',
     ];
     

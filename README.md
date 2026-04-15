@@ -47,16 +47,16 @@ Update your .env file:
 
 env
 DB_CONNECTION=sqlite
-# Create empty database file:
+Create empty database file:
 touch database/database.sqlite
 
-# Or use MySQL:
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=loyalty
-# DB_USERNAME=root
-# DB_PASSWORD=
+Or use MySQL:
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=loyalty
+DB_USERNAME=root
+DB_PASSWORD=
 
 4. Generate Application Key
 ```

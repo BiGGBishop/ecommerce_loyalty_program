@@ -10,6 +10,8 @@ Route::inertia('/', 'welcome', [
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::post('/purchase', [PurchaseController::class, 'store'])->name('purchase.store');
+    Route::get('/purchase/history', [PurchaseController::class, 'history'])->name('purchase.history');
 });
 
 require __DIR__.'/settings.php';

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use App\Services\LoyaltyService;
+use App\Services\PurchaseService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +17,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(LoyaltyService::class, function ($app) {
+            return new LoyaltyService();
+        });
+        
+        $this->app->singleton(PurchaseService::class, function ($app) {
+            return new PurchaseService();
+        });
     }
 
     /**

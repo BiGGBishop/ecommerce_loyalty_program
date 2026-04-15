@@ -1,7 +1,11 @@
 import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { dashboard } from '@/routes';
-import { Trophy, Lock, Award, TrendingUp, Star, Gift, Wallet, Clock, History } from 'lucide-react';
+import { Trophy, Lock, Award, TrendingUp, Star, Gift, Wallet, Clock, History, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
+import WelcomeBanner from '@/components/WelcomeBanner';
+import StatsCards from '@/components/StatsCards';
+import ProductModal from '@/components/ProductModal';
+import PurchaseHistoryModal from '@/components/PurchaseHistoryModal';
 
 interface BadgeHistory {
     name: string;
@@ -24,16 +28,52 @@ interface LoyaltyData {
     all_badges: BadgeHistory[];
 }
 
-interface DashboardProps {
-    loyaltyData: LoyaltyData;
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
 }
 
-export default function Dashboard({ loyaltyData }: DashboardProps) {
+interface Purchase {
+    id: string;
+    product_name: string;
+    amount: number;
+    transaction_id: string;
+    date: string;
+}
+
+interface DashboardProps {
+    loyaltyData: LoyaltyData;
+    purchaseStats: {
+        total_purchases: number;
+        total_spent: number;
+    };
+    allProducts: Product[];
+    user: {
+        name: string;
+        email: string;
+        member_since: string;
+    };
+}
+
+export default function Dashboard({ 
+    loyaltyData, 
+    purchaseStats, 
+    allProducts, 
+    user 
+}: DashboardProps) {
+    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [showProductModal, setShowProductModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [loading, setLoading] = useState(false);
+
     const progressPercent = loyaltyData?.remaining_to_unlock_next_badge > 0 
         ? ((5 - loyaltyData.remaining_to_unlock_next_badge) / 5) * 100 
         : 100;
 
-    // Format currency in Naira
     const formatNaira = (amount: number) => {
         return new Intl.NumberFormat('en-NG', {
             style: 'currency',
@@ -43,10 +83,100 @@ export default function Dashboard({ loyaltyData }: DashboardProps) {
         }).format(amount);
     };
 
+    // Fetch purchase history
+    const fetchPurchaseHistory = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/purchase/history');
+            const data = await response.json();
+            setPurchases(data.purchases);
+        } catch (error) {
+            console.error('Error fetching purchase history:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle purchase
+    const handlePurchase = async (productId: string, quantity: number) => {
+        try {
+            const response = await fetch('/purchase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: quantity,
+                }),
+            });
+            
+            if (response.ok) {
+                alert('Purchase successful! Check your progress.');
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert(error.message || 'Purchase failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Purchase failed:', error);
+            alert('Purchase failed. Please try again.');
+        }
+    };
+
+    // Open product modal
+    const openProductModal = () => {
+        setSelectedProduct(null);
+        setShowProductModal(true);
+    };
+
+    // Open history modal
+    const openHistoryModal = async () => {
+        await fetchPurchaseHistory();
+        setShowHistoryModal(true);
+    };
+
+    // Handle product selection from modal
+    const handleProductSelect = (product: Product) => {
+        setSelectedProduct(product);
+    };
+
     return (
         <>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+                {/* Welcome Banner */}
+                <WelcomeBanner 
+                    userName={user.name} 
+                    memberSince={user.member_since} 
+                />
+
+                {/* Stats Cards */}
+                <StatsCards 
+                    totalPurchases={purchaseStats?.total_purchases || 0}
+                    totalSpent={purchaseStats?.total_spent || 0}
+                />
+
+                {/* Shop Button */}
+                <div className="rounded-xl border border-sidebar-border/70 p-6 shadow-sm bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">🛍️ Start Shopping</h2>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Make purchases to unlock achievements, earn badges, and get cashback!
+                            </p>
+                        </div>
+                        <button
+                            onClick={openProductModal}
+                            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                        >
+                            <ShoppingBag className="w-5 h-5" />
+                            Browse All Products
+                        </button>
+                    </div>
+                </div>
+
                 {/* Loyalty Rewards Section */}
                 <div className="rounded-xl p-6 shadow-sm border border-sidebar-border/70">
                     <div className="flex items-center justify-between">
@@ -54,7 +184,12 @@ export default function Dashboard({ loyaltyData }: DashboardProps) {
                             <h2 className="text-2xl font-bold mb-2">🏆 My Loyalty Rewards</h2>
                             <p className="text-gray-600 dark:text-gray-400">Keep shopping to unlock more benefits and cashback!</p>
                         </div>
-                        <Gift className="w-12 h-12 text-gray-400" />
+                        <button
+                            onClick={openHistoryModal}
+                            className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                            View History
+                        </button>
                     </div>
                 </div>
 
@@ -196,6 +331,26 @@ export default function Dashboard({ loyaltyData }: DashboardProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Modals */}
+            <ProductModal
+                isOpen={showProductModal}
+                onClose={() => {
+                    setShowProductModal(false);
+                    setSelectedProduct(null);
+                }}
+                products={allProducts || []}
+                selectedProduct={selectedProduct}
+                onPurchase={handlePurchase}
+                onSelectProduct={handleProductSelect}
+            />
+
+            <PurchaseHistoryModal
+                isOpen={showHistoryModal}
+                onClose={() => setShowHistoryModal(false)}
+                purchases={purchases}
+                loading={loading}
+            />
         </>
     );
 }

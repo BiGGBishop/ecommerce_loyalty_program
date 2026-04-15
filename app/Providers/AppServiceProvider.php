@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use App\Services\LoyaltyService;
 use App\Services\PurchaseService;
+use App\Services\ProductService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
         
         $this->app->singleton(PurchaseService::class, function ($app) {
             return new PurchaseService();
+        });
+        
+        $this->app->singleton(ProductService::class, function ($app) {
+            return new ProductService();
         });
     }
 

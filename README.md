@@ -31,9 +31,10 @@ An e-commerce loyalty program system that rewards customers with achievements, b
 ## Installation
 
 ### 1. Clone the Repository
-
-git clone https://github.com/yourusername/bumpa-loyalty-program.git
-cd bumpa-loyalty-program
+```
+git clone https://github.com/BiGGBishop/ecommerce_loyalty_program.git
+cd ecommerce_loyalty_program
+```
 2. Install Backend Dependencies
 ```
 composer install

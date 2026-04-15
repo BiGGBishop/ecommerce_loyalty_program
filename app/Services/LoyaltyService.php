@@ -137,9 +137,55 @@ class LoyaltyService
                 : 0,
         ];
     }
+
+    /**
+     * Get total cashback
+     */
+    public function getTotalCashback(User $user): int
+    {
+        return $user->badges()->sum('cashback_amount');
+    }
+
+    /**
+     * Get last cashback
+     */
+    public function getLastCashback(User $user): ?array
+    {
+        $lastBadge = $user->badges()
+            ->orderBy('user_badges.created_at', 'desc')
+            ->first();
+            
+        if ($lastBadge && $lastBadge->cashback_amount > 0) {
+            return [
+                'amount' => $lastBadge->cashback_amount,
+                'badge' => $lastBadge->name,
+                'date' => $lastBadge->pivot->created_at->format('M d, Y'),
+            ];
+        }
+        
+        return null;
+    }    
+
+    /**
+     * Get all badges with their cashback amounts
+     */
+    public function getBadgesWithCashback(User $user): array
+    {
+        return $user->badges()
+            ->orderBy('required_achievements', 'asc')
+            ->get()
+            ->map(function ($badge) {
+                return [
+                    'name' => $badge->name,
+                    'cashback' => $badge->cashback_amount,
+                    'earned_at' => $badge->pivot->created_at->format('M d, Y'),
+                ];
+            })
+            ->toArray();
+    }
     
     /**
-     * Get all loyalty data in one call (convenience method)
+     * Get all loyalty data in one call
      */
     public function getAllLoyaltyData(User $user): array
     {
@@ -151,6 +197,9 @@ class LoyaltyService
             'current_badge' => $badgeInfo['current_badge'],
             'next_badge' => $badgeInfo['next_badge'],
             'remaining_to_unlock_next_badge' => $badgeInfo['remaining'],
+            'total_cashback' => $this->getTotalCashback($user),
+            'last_cashback' => $this->getLastCashback($user),
+            'all_badges' => $this->getBadgesWithCashback($user),
         ];
     }
 }

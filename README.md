@@ -94,12 +94,8 @@ Visit http://127.0.0.1:8000 to access the application.
 Test Users
 The seeder creates the following test users (password: password for all):
 
-Email	Name	Badges	Total Cashback
-new@example.com	New User	None	₦0
-beginner@example.com	Beginner User	Bronze	₦300
-regular@example.com	Regular Customer	Bronze, Silver	₦800
-pro@example.com	Pro Shopper	Bronze, Silver, Gold	₦1,800
-vip@example.com	VIP Customer	Bronze, Silver, Gold, Platinum	₦3,800
+Visit http://127.0.0.1:8000/register to register on the application.
+After a successfull registration or login, you'll be redirected to the dashboard. you can purchase the product to see how the badge and acheivement and cashback works.
 
 API Endpoints
 Get User Achievements

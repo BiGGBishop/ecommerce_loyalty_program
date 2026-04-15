@@ -4,8 +4,8 @@ An e-commerce loyalty program system that rewards customers with achievements, b
 
 ## Built With
 
-- **Backend**: Laravel 11, PHP 8.2+, SQLite
-- **Frontend**: React 18, Inertia.js, Tailwind CSS, TypeScript
+- **Backend**: Laravel 13, PHP 8.3+, SQLite
+- **Frontend**: React 19, Inertia.js, Tailwind CSS, TypeScript
 - **Authentication**: Laravel Fortify, Laravel Sanctum
 - **Icons**: Lucide React
 

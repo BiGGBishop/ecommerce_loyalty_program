@@ -18,21 +18,16 @@ class LoyaltyService
     public function handlePurchase(User $user): void
     {
         DB::transaction(function () use ($user) {
-            $oldAchievementCount = $user->achievements()->count();
             $totalPurchases = $user->purchases()->count();
-            
-            // Check and unlock new achievements
-            $this->unlockAchievements($user, $totalPurchases);
-            
-            // Check and unlock new badges
-            $this->unlockBadges($user, $oldAchievementCount);
+            $newAchievements = $this->unlockAchievements($user, $totalPurchases);
+            $this->unlockBadges($user);
         });
     }
     
     /**
      * Unlock achievements based on purchase count
      */
-    private function unlockAchievements(User $user, int $purchaseCount): void
+    private function unlockAchievements(User $user, int $purchaseCount): array
     {
         $achievements = Achievement::where('required_purchases', '<=', $purchaseCount)
             ->whereNotIn('id', $user->achievements()->pluck('achievements.id'))
@@ -41,49 +36,45 @@ class LoyaltyService
         foreach ($achievements as $achievement) {
             $user->achievements()->attach($achievement);
             event(new AchievementUnlocked($achievement, $user));
-            
-            Log::info("User {$user->id} unlocked achievement: {$achievement->name}");
         }
+        
+        return $achievements->toArray();
     }
     
     /**
      * Unlock badges based on achievement count
      */
-    private function unlockBadges(User $user, int $previousCount): void
+    private function unlockBadges(User $user): void
     {
-        $currentCount = $user->achievements()->count();
-        $currentBadge = $user->badges()
-            ->orderBy('required_achievements', 'desc')
-            ->first();
+        $currentAchievementCount = $user->achievements()->count();
+        
+        // Find all badges that should be unlocked based on current achievement count
+        $badgesToUnlock = Badge::where('required_achievements', '<=', $currentAchievementCount)
+            ->whereNotIn('id', $user->badges()->pluck('badges.id'))
+            ->orderBy('required_achievements', 'asc')
+            ->get();
             
-        $newBadge = Badge::where('required_achievements', '<=', $currentCount)
-            ->where('required_achievements', '>', $currentBadge?->required_achievements ?? -1)
-            ->orderBy('required_achievements', 'desc')
-            ->first();
+        foreach ($badgesToUnlock as $badge) {
+            $user->badges()->attach($badge);
+            event(new BadgeUnlocked($badge, $user));
             
-        if ($newBadge) {
-            $user->badges()->attach($newBadge);
-            event(new BadgeUnlocked($newBadge, $user));
-            
-            // Process cashback reward
-            $this->processCashback($user, $newBadge->cashback_amount);
-            
-            Log::info("User {$user->id} earned badge: {$newBadge->name} with ₦{$newBadge->cashback_amount} cashback");
+            $this->processCashback($user, $badge);
         }
     }
     
     /**
      * Process cashback payment
      */
-    private function processCashback(User $user, int $amount): void
+    private function processCashback(User $user, Badge $badge): void
     {
-        // Let us log cashback for now, this can be replace with actual payment gateway
+        // Let's log cashback for now we'll replace with actual payment gateway
         Log::channel('cashback')->info('Cashback payment processed', [
             'user_id' => $user->id,
             'user_email' => $user->email,
-            'amount' => $amount,
+            'badge' => $badge->name,
+            'amount' => $badge->cashback_amount,
             'currency' => 'NGN',
-            'reference' => 'CASHBACK_' . time() . '_' . $user->id,
+            'reference' => 'CASHBACK_' . time() . '_' . $user->id . '_' . $badge->id,
         ]);
     }
     
@@ -93,7 +84,7 @@ class LoyaltyService
     public function getUserAchievements(User $user): array
     {
         return $user->achievements()
-            ->orderBy('required_purchases')
+            ->orderBy('required_purchases', 'asc')
             ->pluck('name')
             ->toArray();
     }
@@ -106,12 +97,15 @@ class LoyaltyService
         $currentPurchases = $user->purchases()->count();
         $unlockedIds = $user->achievements()->pluck('achievements.id');
         
-        return Achievement::where('required_purchases', '>', $currentPurchases)
+        $nextAchievements = Achievement::where('required_purchases', '>', $currentPurchases)
             ->whereNotIn('id', $unlockedIds)
-            ->orderBy('required_purchases')
+            ->orderBy('required_purchases', 'asc')
             ->limit(3)
             ->pluck('name')
             ->toArray();
+        
+        // If no next achievements found, return empty array
+        return $nextAchievements;
     }
     
     /**
@@ -124,7 +118,7 @@ class LoyaltyService
             ->first();
             
         $nextBadge = Badge::where('required_achievements', '>', $user->achievements()->count())
-            ->orderBy('required_achievements')
+            ->orderBy('required_achievements', 'asc')
             ->first();
             
         $achievementCount = $user->achievements()->count();
@@ -139,7 +133,7 @@ class LoyaltyService
     }
 
     /**
-     * Get total cashback
+     * Get total cashback from all badges earned
      */
     public function getTotalCashback(User $user): int
     {
@@ -147,7 +141,7 @@ class LoyaltyService
     }
 
     /**
-     * Get last cashback
+     * Get last cashback earned
      */
     public function getLastCashback(User $user): ?array
     {
@@ -171,17 +165,21 @@ class LoyaltyService
      */
     public function getBadgesWithCashback(User $user): array
     {
-        return $user->badges()
+        $badges = $user->badges()
             ->orderBy('required_achievements', 'asc')
-            ->get()
-            ->map(function ($badge) {
-                return [
-                    'name' => $badge->name,
-                    'cashback' => $badge->cashback_amount,
-                    'earned_at' => $badge->pivot->created_at->format('M d, Y'),
-                ];
-            })
-            ->toArray();
+            ->get();
+        
+        if ($badges->isEmpty()) {
+            return [];
+        }
+        
+        return $badges->map(function ($badge) {
+            return [
+                'name' => $badge->name,
+                'cashback' => $badge->cashback_amount,
+                'earned_at' => $badge->pivot->created_at->format('M d, Y'),
+            ];
+        })->toArray();
     }
     
     /**

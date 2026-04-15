@@ -44,4 +44,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(Purchase::class);
     }
+    
+    public function achievements(): BelongsToMany
+    {
+        return $this->belongsToMany(Achievement::class, 'user_achievements')
+                    ->withTimestamps();
+    }
+    
+    public function badges(): BelongsToMany
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+                    ->withTimestamps();
+    }
 }

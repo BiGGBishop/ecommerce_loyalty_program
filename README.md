@@ -85,15 +85,11 @@ npm run build
 ```
 9. Start Development Servers
 
-# Terminal 1 - Laravel server
+# Terminal - server
 ```
-php artisan serve
+composer run dev
 ```
-# Terminal 2 - Vite development server (for hot reloading)
-```
-npm run dev
-```
-Visit http://localhost:8000 to access the application.
+Visit http://127.0.0.1:8000 to access the application.
 
 Test Users
 The seeder creates the following test users (password: password for all):
